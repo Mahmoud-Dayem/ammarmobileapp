@@ -17,10 +17,22 @@ import {
 } from "lucide-react-native";
 import CustomButton from "@/assets/components/CustomButton";
 import { useAppTheme, type AppColors } from "@/theme/color";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Index() {
   const { colors, mode, toggleTheme } = useAppTheme();
   const styles = createStyles(colors);
+ const router  =useRouter()
+
+const handleDynamicRoute = () => {
+  const user = useAuth();
+  const randomId = Math.floor(Math.random() * 100000);
+  router.push({
+    pathname: "/[id]",
+    params: { id: String(randomId) },
+  });
+};
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
@@ -103,6 +115,12 @@ export default function Index() {
             <CustomButton
               title="Click me"
               onPress={() => Alert.alert("Button clicked")}
+              containerStyle={styles.loginButton}
+              textStyle={styles.loginText}
+            />
+            <CustomButton
+              title="open dynamic route"
+              onPress={handleDynamicRoute}
               containerStyle={styles.loginButton}
               textStyle={styles.loginText}
             />
