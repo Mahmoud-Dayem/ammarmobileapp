@@ -1,18 +1,61 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Tabs } from "expo-router";
+import { House, UserRound ,Settings2} from "lucide-react-native";
+import { AppThemeProvider, useAppTheme } from "@/theme/color";
+import { Settings } from "react-native";
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
+    <AppThemeProvider>
       <AppTabs />
-    </ThemeProvider>
+    </AppThemeProvider>
+  );
+}
+
+function AppTabs() {
+  const { colors } = useAppTheme();
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: colors.primary,
+   
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: {
+          backgroundColor: colors.background,
+          borderTopColor: colors.border,
+          paddingTop: 8,
+          
+        },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.primary,
+        headerShadowVisible: false,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Home",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <House color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="about"
+        options={{
+          title: "About",
+          tabBarIcon: ({ color, size }) => <UserRound color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        
+        options={{
+          title: "Settings",
+           tabBarIcon: ({ color, size }) => <Settings2 color={color} size={size} />,
+          
+        }}
+      />
+    </Tabs>
   );
 }
