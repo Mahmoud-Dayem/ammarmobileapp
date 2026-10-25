@@ -43,7 +43,7 @@ const handleDynamicRoute = () => {
               <View style={styles.brandMark}>
                 <Text style={styles.brandLetter}>a.</Text>
               </View>
-              <Text style={styles.brandName}>ammar</Text>
+              <Text style={styles.brandName}>{process.env.EXPO_PUBLIC_MY_NAME}</Text>
             </View>
             <View style={styles.badge}>
               <View style={styles.dot} />
