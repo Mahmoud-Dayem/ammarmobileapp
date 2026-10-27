@@ -18,7 +18,9 @@ function AppTabs() {
   const { colors } = useAppTheme();
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false,  headerStyle: {
+          backgroundColor: '#f4511e',
+        }, headerTitle:""}}>
       {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
       <Slot />
     </Stack>

@@ -28,6 +28,6 @@ export default function HomeScreen() {
     <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
       <Text style={{ marginBottom: 20 }}>{message}</Text>
       <Button title="Test FastAPI" onPress={testAPI} />
-    </View>
+    </View> 
   );
 }
