@@ -1,6 +1,6 @@
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "expo-router";
+
 import { useState } from "react";
+import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
+
 export default function LoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
@@ -19,46 +22,122 @@ export default function LoginScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { setUser, setIsLoading } = useAuth();
+  const { setUser } = useAuth();
   const router = useRouter();
 
-  const handleSubmit = () => {
-    const normalizedEmail = email.trim();
+  const handleSubmit = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
 
-    // Validate required fields
+    // Validate required fields.
     if (!normalizedEmail || !password) {
       Alert.alert(
         "Missing Information",
-        "Please enter your email and password.",
+        "Please enter your email and password."
       );
       return;
     }
 
-    // Validate password confirmation during sign up
+    // Validate email format.
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      Alert.alert(
+        "Invalid Email",
+        "Please enter a valid email address."
+      );
+      return;
+    }
+
+    // Validate password confirmation during sign-up.
     if (isSignUp && password !== confirmPassword) {
-      Alert.alert("Password Mismatch", "Your passwords do not match.");
+      Alert.alert(
+        "Password Mismatch",
+        "Your passwords do not match."
+      );
+      return;
+    }
+
+    if (isSignUp && password.length < 6) {
+      Alert.alert(
+        "Weak Password",
+        "Your password must contain at least 6 characters."
+      );
       return;
     }
 
     setIsSubmitting(true);
-    setIsLoading(true);
 
     try {
-      // Fake authentication: no API or database
-      const fakeUser = {
-        id: "user-123",
-        email: normalizedEmail,
-        displayName: normalizedEmail.split("@")[0],
-      };
+      if (isSignUp) {
+        // Create a new account in Supabase Auth.
+        const { data, error } = await supabase.auth.signUp({
+          email: normalizedEmail,
+          password,
+        });
 
-      // Dispatch the temporary user to AuthContext
-      setUser(fakeUser);
+        if (error) {
+          throw error;
+        }
 
-      // Navigate to the home screen
-      router.replace("/(tabs)");
+        // Email confirmation may be required.
+        if (!data.session) {
+          Alert.alert(
+            "Check Your Email",
+            "Your account was created. Confirm your email before signing in."
+          );
+
+          setIsSignUp(false);
+          setPassword("");
+          setConfirmPassword("");
+          return;
+        }
+
+        // A session was created, so the user is authenticated.
+        if (data.user) {
+          setUser({
+            id: data.user.id,
+            email: data.user.email,
+            displayName:
+              data.user.email?.split("@")[0] ?? null,
+          });
+        }
+
+        // AuthContext also receives the session automatically.
+        router.replace("/(tabs)");
+      } else {
+        // Sign in to an existing account.
+        const { data, error } =
+          await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          });
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data.user) {
+          throw new Error("No authenticated user was returned.");
+        }
+
+        setUser({
+          id: data.user.id,
+          email: data.user.email,
+          displayName:
+            data.user.email?.split("@")[0] ?? null,
+        });
+
+        router.replace("/(tabs)");
+      }
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred.";
+
+      Alert.alert("Authentication Failed", message);
     } finally {
       setIsSubmitting(false);
-      setIsLoading(false);
     }
   };
 
@@ -69,99 +148,111 @@ export default function LoginScreen() {
   };
 
   return (
-    <>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>
-            {isSignUp ? "Create Account" : "Welcome Back"}
-          </Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          {isSignUp ? "Create Account" : "Welcome Back"}
+        </Text>
 
-          <Text style={styles.subtitle}>
-            {isSignUp ? "Sign up to get started" : "Sign in to continue"}
-          </Text>
-        </View>
+        <Text style={styles.subtitle}>
+          {isSignUp
+            ? "Sign up to get started"
+            : "Sign in to continue"}
+        </Text>
+      </View>
 
-        <View style={styles.form}>
-          <Text style={styles.label}>Email Address</Text>
+      <View style={styles.form}>
+        <Text style={styles.label}>Email Address</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="you@dayem.com"
-            placeholderTextColor="#94A3B8"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            autoCorrect={false}
-          />
+        <TextInput
+          style={styles.input}
+          placeholder="you@example.com"
+          placeholderTextColor="#94A3B8"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          editable={!isSubmitting}
+        />
 
-          <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>Password</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your password"
-            placeholderTextColor="#94A3B8"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoComplete={isSignUp ? "new-password" : "current-password"}
-          />
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your password"
+          placeholderTextColor="#94A3B8"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete={
+            isSignUp ? "new-password" : "current-password"
+          }
+          editable={!isSubmitting}
+        />
 
-          {isSignUp && (
-            <>
-              <Text style={styles.label}>Confirm Password</Text>
+        {isSignUp && (
+          <>
+            <Text style={styles.label}>Confirm Password</Text>
 
-              <TextInput
-                style={styles.input}
-                placeholder="Re-enter your password"
-                placeholderTextColor="#94A3B8"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete="new-password"
-              />
-            </>
+            <TextInput
+              style={styles.input}
+              placeholder="Re-enter your password"
+              placeholderTextColor="#94A3B8"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="new-password"
+              editable={!isSubmitting}
+            />
+          </>
+        )}
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            isSubmitting && styles.buttonDisabled,
+          ]}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+          activeOpacity={0.8}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {isSignUp ? "Create Account" : "Sign In"}
+            </Text>
           )}
+        </TouchableOpacity>
+
+        <View style={styles.switchContainer}>
+          <Text style={styles.switchText}>
+            {isSignUp
+              ? "Already have an account? "
+              : "Don't have an account? "}
+          </Text>
 
           <TouchableOpacity
-            style={[styles.button, isSubmitting && styles.buttonDisabled]}
-            onPress={handleSubmit}
+            onPress={switchMode}
             disabled={isSubmitting}
-            activeOpacity={0.8}
           >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>
-                {isSignUp ? "Create Account" : "Sign In"}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.switchContainer}>
-            <Text style={styles.switchText}>
-              {isSignUp
-                ? "Already have an account? "
-                : "Don't have an account? "}
+            <Text style={styles.switchLink}>
+              {isSignUp ? "Sign In" : "Sign Up"}
             </Text>
-
-            <TouchableOpacity onPress={switchMode} disabled={isSubmitting}>
-              <Text style={styles.switchLink}>
-                {isSignUp ? "Sign In" : "Sign Up"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.note} >
-            Demo mode: no account is stored. Any non-empty email and password
-            will work for login.
-          </Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
-    </>
+
+        <Text style={styles.note}>
+          {isSignUp
+            ? "Create your account using your email and password."
+            : "Sign in securely using your registered credentials."}
+        </Text>
+      </View>
+    </SafeAreaView>
   );
 }
 
