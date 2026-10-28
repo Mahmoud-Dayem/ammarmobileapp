@@ -1,30 +1,42 @@
-
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
+  View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { setUser, setIsLoading } = useAuth();
   const router = useRouter();
 
-  const handleSignIn = () => {
+  const handleSubmit = () => {
     const normalizedEmail = email.trim();
 
+    // Validate required fields
     if (!normalizedEmail || !password) {
-      Alert.alert("", "Please enter your email and password.");
+      Alert.alert(
+        "Missing Information",
+        "Please enter your email and password.",
+      );
+      return;
+    }
+
+    // Validate password confirmation during sign up
+    if (isSignUp && password !== confirmPassword) {
+      Alert.alert("Password Mismatch", "Your passwords do not match.");
       return;
     }
 
@@ -32,17 +44,17 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      // Fake authentication: accept any non-empty email/password.
+      // Fake authentication: no API or database
       const fakeUser = {
         id: "user-123",
         email: normalizedEmail,
         displayName: normalizedEmail.split("@")[0],
       };
 
-      // Dispatch the mock user to AuthContext.
+      // Dispatch the temporary user to AuthContext
       setUser(fakeUser);
 
-      // Navigate to the home screen.
+      // Navigate to the home screen
       router.replace("/(tabs)");
     } finally {
       setIsSubmitting(false);
@@ -50,62 +62,106 @@ export default function LoginScreen() {
     }
   };
 
+  const switchMode = () => {
+    setIsSignUp((currentMode) => !currentMode);
+    setPassword("");
+    setConfirmPassword("");
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>
-          Sign in to continue
-        </Text>
-      </View>
+    <>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>
+            {isSignUp ? "Create Account" : "Welcome Back"}
+          </Text>
 
-      <View style={styles.form}>
-        <Text style={styles.label}>Email Address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="you@example.com"
-          placeholderTextColor="#94A3B8"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          autoCorrect={false}
-        />
+          <Text style={styles.subtitle}>
+            {isSignUp ? "Sign up to get started" : "Sign in to continue"}
+          </Text>
+        </View>
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your password"
-          placeholderTextColor="#94A3B8"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          autoComplete="current-password"
-        />
+        <View style={styles.form}>
+          <Text style={styles.label}>Email Address</Text>
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            isSubmitting && styles.buttonDisabled,
-          ]}
-          onPress={handleSignIn}
-          disabled={isSubmitting}
-          activeOpacity={0.8}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>Sign In</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="you@dayem.com"
+            placeholderTextColor="#94A3B8"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
+          />
+
+          <Text style={styles.label}>Password</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            placeholderTextColor="#94A3B8"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete={isSignUp ? "new-password" : "current-password"}
+          />
+
+          {isSignUp && (
+            <>
+              <Text style={styles.label}>Confirm Password</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Re-enter your password"
+                placeholderTextColor="#94A3B8"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="new-password"
+              />
+            </>
           )}
-        </TouchableOpacity>
 
-        <Text style={styles.note}>
-          Demo mode: any non-empty email and password will work.
-        </Text>
-      </View>
-    </View>
+          <TouchableOpacity
+            style={[styles.button, isSubmitting && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+            activeOpacity={0.8}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>
+                {isSignUp ? "Create Account" : "Sign In"}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchText}>
+              {isSignUp
+                ? "Already have an account? "
+                : "Don't have an account? "}
+            </Text>
+
+            <TouchableOpacity onPress={switchMode} disabled={isSubmitting}>
+              <Text style={styles.switchLink}>
+                {isSignUp ? "Sign In" : "Sign Up"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.note} >
+            Demo mode: no account is stored. Any non-empty email and password
+            will work for login.
+          </Text>
+        </View>
+      </SafeAreaView>
+    </>
   );
 }
 
@@ -164,11 +220,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
+  switchContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    flexWrap: "wrap",
+    marginTop: 20,
+  },
+  switchText: {
+    fontSize: 14,
+    color: "#64748B",
+  },
+  switchLink: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#0E7C86",
+  },
   note: {
     fontSize: 12,
     color: "#64748B",
     textAlign: "center",
-    marginTop: 12,
+    marginTop: 16,
     lineHeight: 18,
   },
 });
