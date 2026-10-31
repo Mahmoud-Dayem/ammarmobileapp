@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +20,10 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [companyId, setCompanyId] = useState("");
+  const [age, setAge] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { setUser } = useAuth();
@@ -32,7 +36,7 @@ export default function LoginScreen() {
     if (!normalizedEmail || !password) {
       Alert.alert(
         "Missing Information",
-        "Please enter your email and password."
+        "Please enter your email and password.",
       );
       return;
     }
@@ -41,26 +45,55 @@ export default function LoginScreen() {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(normalizedEmail)) {
-      Alert.alert(
-        "Invalid Email",
-        "Please enter a valid email address."
-      );
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
 
     // Validate password confirmation during sign-up.
     if (isSignUp && password !== confirmPassword) {
+      Alert.alert("Password Mismatch", "Your passwords do not match.");
+      return;
+    }
+
+    if (isSignUp && (!firstName.trim() || !lastName.trim())) {
       Alert.alert(
-        "Password Mismatch",
-        "Your passwords do not match."
+        "Missing Information",
+        "Please enter your first and last name.",
       );
+      return;
+    }
+
+    const normalizedCompanyId = companyId.trim();
+    if (
+      isSignUp &&
+      normalizedCompanyId &&
+      (!/^\d+$/.test(normalizedCompanyId) ||
+        !Number.isSafeInteger(Number(normalizedCompanyId)) ||
+        Number(normalizedCompanyId) < 1)
+    ) {
+      Alert.alert(
+        "Invalid Company ID",
+        "Please enter a positive whole-number company ID.",
+      );
+      return;
+    }
+
+    const normalizedAge = age.trim();
+    if (
+      isSignUp &&
+      normalizedAge &&
+      (!/^\d+$/.test(normalizedAge) ||
+        !Number.isSafeInteger(Number(normalizedAge)) ||
+        Number(normalizedAge) < 1)
+    ) {
+      Alert.alert("Invalid Age", "Please enter a positive whole-number age.");
       return;
     }
 
     if (isSignUp && password.length < 6) {
       Alert.alert(
         "Weak Password",
-        "Your password must contain at least 6 characters."
+        "Your password must contain at least 6 characters.",
       );
       return;
     }
@@ -73,6 +106,16 @@ export default function LoginScreen() {
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
+          options: {
+            data: {
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              company_id: normalizedCompanyId
+                ? Number(normalizedCompanyId)
+                : null,
+              age: normalizedAge ? Number(normalizedAge) : null,
+            },
+          },
         });
 
         if (error) {
@@ -83,7 +126,7 @@ export default function LoginScreen() {
         if (!data.session) {
           Alert.alert(
             "Check Your Email",
-            "Your account was created. Confirm your email before signing in."
+            "Your account was created. Confirm your email before signing in.",
           );
 
           setIsSignUp(false);
@@ -97,8 +140,7 @@ export default function LoginScreen() {
           setUser({
             id: data.user.id,
             email: data.user.email,
-            displayName:
-              data.user.email?.split("@")[0] ?? null,
+            displayName: data.user.email?.split("@")[0] ?? null,
           });
         }
 
@@ -106,11 +148,11 @@ export default function LoginScreen() {
         router.replace("/(tabs)");
       } else {
         // Sign in to an existing account.
-        const { data, error } =
-          await supabase.auth.signInWithPassword({
-            email: normalizedEmail,
-            password,
-          });
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
+        console.log("Access token:❤️❤️❤️❤️❤️🎲🎲🎲🎲🎲", data.session?.access_token);
 
         if (error) {
           throw error;
@@ -119,12 +161,10 @@ export default function LoginScreen() {
         if (!data.user) {
           throw new Error("No authenticated user was returned.");
         }
-
         setUser({
           id: data.user.id,
           email: data.user.email,
-          displayName:
-            data.user.email?.split("@")[0] ?? null,
+          displayName: data.user.email?.split("@")[0] ?? null,
         });
 
         router.replace("/(tabs)");
@@ -149,109 +189,154 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          {isSignUp ? "Create Account" : "Welcome Back"}
-        </Text>
-
-        <Text style={styles.subtitle}>
-          {isSignUp
-            ? "Sign up to get started"
-            : "Sign in to continue"}
-        </Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.label}>Email Address</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="you@example.com"
-          placeholderTextColor="#94A3B8"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          autoCorrect={false}
-          editable={!isSubmitting}
-        />
-
-        <Text style={styles.label}>Password</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your password"
-          placeholderTextColor="#94A3B8"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          autoComplete={
-            isSignUp ? "new-password" : "current-password"
-          }
-          editable={!isSubmitting}
-        />
-
-        {isSignUp && (
-          <>
-            <Text style={styles.label}>Confirm Password</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Re-enter your password"
-              placeholderTextColor="#94A3B8"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="new-password"
-              editable={!isSubmitting}
-            />
-          </>
-        )}
-
-        <TouchableOpacity
-          style={[
-            styles.button,
-            isSubmitting && styles.buttonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          activeOpacity={0.8}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>
-              {isSignUp ? "Create Account" : "Sign In"}
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.switchContainer}>
-          <Text style={styles.switchText}>
-            {isSignUp
-              ? "Already have an account? "
-              : "Don't have an account? "}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>
+            {isSignUp ? "Create Account" : "Welcome Back"}
           </Text>
 
-          <TouchableOpacity
-            onPress={switchMode}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.switchLink}>
-              {isSignUp ? "Sign In" : "Sign Up"}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.subtitle}>
+            {isSignUp ? "Sign up to get started" : "Sign in to continue"}
+          </Text>
         </View>
 
-        <Text style={styles.note}>
-          {isSignUp
-            ? "Create your account using your email and password."
-            : "Sign in securely using your registered credentials."}
-        </Text>
-      </View>
+        <View style={styles.form}>
+          {isSignUp && (
+            <>
+              <Text style={styles.label}>First Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your first name"
+                placeholderTextColor="#94A3B8"
+                value={firstName}
+                onChangeText={setFirstName}
+                autoCapitalize="words"
+                autoComplete="given-name"
+                editable={!isSubmitting}
+              />
+
+              <Text style={styles.label}>Last Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your last name"
+                placeholderTextColor="#94A3B8"
+                value={lastName}
+                onChangeText={setLastName}
+                autoCapitalize="words"
+                autoComplete="family-name"
+                editable={!isSubmitting}
+              />
+
+              <Text style={styles.label}>Company ID (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your company ID"
+                placeholderTextColor="#94A3B8"
+                value={companyId}
+                onChangeText={setCompanyId}
+                keyboardType="number-pad"
+                editable={!isSubmitting}
+              />
+
+              <Text style={styles.label}>Age (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your age"
+                placeholderTextColor="#94A3B8"
+                value={age}
+                onChangeText={setAge}
+                keyboardType="number-pad"
+                editable={!isSubmitting}
+              />
+            </>
+          )}
+
+          <Text style={styles.label}>Email Address</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="you@example.com"
+            placeholderTextColor="#94A3B8"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
+            editable={!isSubmitting}
+          />
+
+          <Text style={styles.label}>Password</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            placeholderTextColor="#94A3B8"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete={isSignUp ? "new-password" : "current-password"}
+            editable={!isSubmitting}
+          />
+
+          {isSignUp && (
+            <>
+              <Text style={styles.label}>Confirm Password</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Re-enter your password"
+                placeholderTextColor="#94A3B8"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="new-password"
+                editable={!isSubmitting}
+              />
+            </>
+          )}
+
+          <TouchableOpacity
+            style={[styles.button, isSubmitting && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+            activeOpacity={0.8}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>
+                {isSignUp ? "Create Account" : "Sign In"}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchText}>
+              {isSignUp
+                ? "Already have an account? "
+                : "Don't have an account? "}
+            </Text>
+
+            <TouchableOpacity onPress={switchMode} disabled={isSubmitting}>
+              <Text style={styles.switchLink}>
+                {isSignUp ? "Sign In" : "Sign Up"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.note}>
+            {isSignUp
+              ? "Create your account using your email and password."
+              : "Sign in securely using your registered credentials."}
+          </Text>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -259,9 +344,13 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
     backgroundColor: "#FAF7F0",
+  },
+  content: {
+    flexGrow: 1,
+    justifyContent: "center",
     paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   header: {
     marginBottom: 36,

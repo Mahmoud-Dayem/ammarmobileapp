@@ -10,7 +10,7 @@ export default function RootLayout() {
       <AppThemeProvider>
         <AppTabs />
       </AppThemeProvider>
-     </AuthProvider>
+    </AuthProvider>
   );
 }
 
@@ -18,9 +18,15 @@ function AppTabs() {
   const { colors } = useAppTheme();
 
   return (
-    <Stack screenOptions={{ headerShown: false,  headerStyle: {
-          backgroundColor: '#f4511e',
-        }, headerTitle:""}}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        headerStyle: {
+          backgroundColor: "#f4511e",
+        },
+        headerTitle: "",
+      }}
+    >
       {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
       <Slot />
     </Stack>
